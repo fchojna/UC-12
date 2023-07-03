@@ -1,0 +1,215 @@
+Given following C# code, documentat all public properties, variables and methods using built-in language documentation comments syntax.
+
+using ShareX.HelpersLib;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace ShareX
+{
+    public class WatchFolderManager : IDisposable
+    {
+        public List<WatchFolder> WatchFolders { get; private set; }
+
+        public void UpdateWatchFolders()
+        {
+            if (WatchFolders != null)
+            {
+                UnregisterAllWatchFolders();
+            }
+
+            WatchFolders = new List<WatchFolder>();
+
+            foreach (WatchFolderSettings defaultWatchFolderSetting in Program.DefaultTaskSettings.WatchFolderList)
+            {
+                AddWatchFolder(defaultWatchFolderSetting, Program.DefaultTaskSettings);
+            }
+
+            foreach (HotkeySettings hotkeySetting in Program.HotkeysConfig.Hotkeys)
+            {
+                foreach (WatchFolderSettings watchFolderSetting in hotkeySetting.TaskSettings.WatchFolderList)
+                {
+                    AddWatchFolder(watchFolderSetting, hotkeySetting.TaskSettings);
+                }
+            }
+        }
+
+        private WatchFolder FindWatchFolder(WatchFolderSettings watchFolderSetting)
+        {
+            return WatchFolders.FirstOrDefault(watchFolder => watchFolder.Settings == watchFolderSetting);
+        }
+
+        private bool IsExist(WatchFolderSettings watchFolderSetting)
+        {
+            return FindWatchFolder(watchFolderSetting) != null;
+        }
+
+        public void AddWatchFolder(WatchFolderSettings watchFolderSetting, TaskSettings taskSettings)
+        {
+            if (!IsExist(watchFolderSetting))
+            {
+                if (!taskSettings.WatchFolderList.Contains(watchFolderSetting))
+                {
+                    taskSettings.WatchFolderList.Add(watchFolderSetting);
+                }
+
+                WatchFolder watchFolder = new WatchFolder();
+                watchFolder.Settings = watchFolderSetting;
+                watchFolder.TaskSettings = taskSettings;
+
+                watchFolder.FileWatcherTrigger += origPath =>
+                {
+                    TaskSettings taskSettingsCopy = TaskSettings.GetSafeTaskSettings(taskSettings);
+                    string destPath = origPath;
+
+                    if (watchFolderSetting.MoveFilesToScreenshotsFolder)
+                    {
+                        string screenshotsFolder = TaskHelpers.GetScreenshotsFolder(taskSettingsCopy);
+                        string fileName = Path.GetFileName(origPath);
+                        destPath = TaskHelpers.HandleExistsFile(screenshotsFolder, fileName, taskSettingsCopy);
+                        FileHelpers.CreateDirectoryFromFilePath(destPath);
+                        File.Move(origPath, destPath);
+                    }
+
+                    UploadManager.UploadFile(destPath, taskSettingsCopy);
+                };
+
+                WatchFolders.Add(watchFolder);
+
+                if (taskSettings.WatchFolderEnabled)
+                {
+                    watchFolder.Enable();
+                }
+            }
+        }
+
+        public void RemoveWatchFolder(WatchFolderSettings watchFolderSetting)
+        {
+            using (WatchFolder watchFolder = FindWatchFolder(watchFolderSetting))
+            {
+                if (watchFolder != null)
+                {
+                    watchFolder.TaskSettings.WatchFolderList.Remove(watchFolderSetting);
+                    WatchFolders.Remove(watchFolder);
+                }
+            }
+        }
+
+        public void UpdateWatchFolderState(WatchFolderSettings watchFolderSetting)
+        {
+            WatchFolder watchFolder = FindWatchFolder(watchFolderSetting);
+            if (watchFolder != null)
+            {
+                if (watchFolder.TaskSettings.WatchFolderEnabled)
+                {
+                    watchFolder.Enable();
+                }
+                else
+                {
+                    watchFolder.Dispose();
+                }
+            }
+        }
+
+        public void UnregisterAllWatchFolders()
+        {
+            if (WatchFolders != null)
+            {
+                foreach (WatchFolder watchFolder in WatchFolders)
+                {
+                    if (watchFolder != null)
+                    {
+                        watchFolder.Dispose();
+                    }
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            UnregisterAllWatchFolders();
+        }
+    }
+}
+
+ChatGPT
+Here's how you can document the public properties and methods in the given C# code:
+
+csharp
+Copy code
+using ShareX.HelpersLib;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace ShareX
+{
+    /// <summary>
+    /// Manager class responsible for handling watch folders.
+    /// </summary>
+    public class WatchFolderManager : IDisposable
+    {
+        /// <summary>
+        /// Gets the list of WatchFolder objects being managed by the WatchFolderManager.
+        /// </summary>
+        public List<WatchFolder> WatchFolders { get; private set; }
+
+        /// <summary>
+        /// Update the list of watch folders. Unregisters the existing ones and then recreates them
+        /// based on the latest settings in the default and hotkey tasks.
+        /// </summary>
+        public void UpdateWatchFolders()
+        {
+            // Code...
+        }
+
+        // Private methods not documented as they are not public facing.
+
+        /// <summary>
+        /// Adds a watch folder to the list of watch folders.
+        /// </summary>
+        /// <param name="watchFolderSetting">The settings of the watch folder to add.</param>
+        /// <param name="taskSettings">The task settings related to the watch folder.</param>
+        public void AddWatchFolder(WatchFolderSettings watchFolderSetting, TaskSettings taskSettings)
+        {
+            // Code...
+        }
+
+        /// <summary>
+        /// Removes a watch folder from the list of watch folders.
+        /// </summary>
+        /// <param name="watchFolderSetting">The settings of the watch folder to remove.</param>
+        public void RemoveWatchFolder(WatchFolderSettings watchFolderSetting)
+        {
+            // Code...
+        }
+
+        /// <summary>
+        /// Updates the state of a watch folder, enabling or disabling it based on the current settings.
+        /// </summary>
+        /// <param name="watchFolderSetting">The settings of the watch folder to update.</param>
+        public void UpdateWatchFolderState(WatchFolderSettings watchFolderSetting)
+        {
+            // Code...
+        }
+
+        /// <summary>
+        /// Unregisters all watch folders, effectively stopping any monitoring.
+        /// </summary>
+        public void UnregisterAllWatchFolders()
+        {
+            // Code...
+        }
+
+        /// <summary>
+        /// Disposes of the WatchFolderManager, unregistering all watch folders.
+        /// </summary>
+        public void Dispose()
+        {
+            // Code...
+        }
+    }
+}
+This is using the XML documentation comments syntax provided by C#. The 'summary' tag provides a brief explanation of what the property or method does. The 'param' tag describes the purpose of each parameter. Note that private properties and methods are typically not documented because they aren't exposed for other classes to use.
